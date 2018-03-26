@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.user.vimeotest.MainActivity">
+
+<!--    <cn.jzvd.JZVideoPlayerStandard
+        android:id="@+id/mainVideo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>-->
+    <com.google.android.exoplayer2.ui.PlayerView
+        android:id="@+id/mainVideo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+    <LinearLayout
+        android:gravity="bottom"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <Button
+            android:id="@+id/mainQualityBtn"
+            android:text="화질보기"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+</android.support.constraint.ConstraintLayout>
