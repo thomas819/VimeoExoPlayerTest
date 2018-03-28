@@ -1,8 +1,6 @@
 package com.example.user.vimeotest;
 
 import android.content.DialogInterface;
-import android.media.MediaPlayer;
-import android.media.MediaPlayer.TrackInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
@@ -10,6 +8,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.text.Selection;
 import android.util.Log;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.exoplayer2.C;
@@ -22,12 +21,15 @@ import com.google.android.exoplayer2.source.TrackGroupArray;
 import com.google.android.exoplayer2.source.hls.HlsMediaSource;
 import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
+import com.google.android.exoplayer2.trackselection.FixedTrackSelection;
 import com.google.android.exoplayer2.trackselection.MappingTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelection;
+import com.google.android.exoplayer2.ui.DebugTextViewHelper;
 import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
 import com.vimeo.networking.Configuration;
 import com.vimeo.networking.Vimeo;
@@ -38,6 +40,7 @@ import com.vimeo.networking.model.VideoFile;
 import com.vimeo.networking.model.error.VimeoError;
 import com.vimeo.networking.model.playback.Play;
 
+import java.security.AlgorithmConstraints;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -45,23 +48,31 @@ import java.util.Locale;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
-import cn.jzvd.JZVideoPlayer;
+
+import static com.google.android.exoplayer2.trackselection.MappingTrackSelector.MappedTrackInfo;
+import static com.google.android.exoplayer2.trackselection.MappingTrackSelector.SelectionOverride;
 
 public class MainActivity extends AppCompatActivity {
     String ACCESS_TOKEN = "cffbb78296f2476a83a410475a8673c7";
     String url = "https://api.vimeo.com/videos/226994817";
     @BindView(R.id.mainVideo) PlayerView mainVideo;
+    @BindView(R.id.mainNum) TextView mainNum;
 
     DefaultTrackSelector trackSelector;
     //exoPlayer
     SimpleExoPlayer player;
-    MappingTrackSelector.MappedTrackInfo mappedTrackinfo;
-    TrackSelection.Factory videoSelectionFactory;
+    MappedTrackInfo mappedTrackinfo;
+    AdaptiveTrackSelection.Factory videoSelectionFactory;
     AlertDialog.Builder builder;
     TrackGroupArray trackGroups;
+    SelectionOverride override;
 
-    List<String> qualityList = new ArrayList<>();
-    List<TrackGroup> trackGroupList = new ArrayList<>();
+    Boolean isDisabled;
+
+    int rendererIndex = 0;
+    List<String> qualityList = new ArrayList<>(); //360p,720p,...등
+
+    List<Format> formatList = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,10 +88,9 @@ public class MainActivity extends AppCompatActivity {
                 //video.
                 for (VideoFile file : video.files) {
                     if (file.getQuality() == VideoFile.VideoQuality.HLS) {
-                        // mainVideo.setUp(file.getLink(), JZVideoPlayer.SCREEN_WINDOW_NORMAL,"야호");
-                        //initExoPlayer(file.getLink());
+                        // HLS 이면
+                        //file.getLink() 링크를 가져오쟈
                         playExoStream(file.getLink(), VideoFile.VideoQuality.HLS);
-
                     }
                 }
             }
@@ -94,10 +104,11 @@ public class MainActivity extends AppCompatActivity {
         });
         //vimeo();
     }
-
+    //플레이어 셋팅
     private void initExoPlayer() {
         DefaultBandwidthMeter bandwidthMeter2 = new DefaultBandwidthMeter();
         videoSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter2);
+
         trackSelector = new DefaultTrackSelector(videoSelectionFactory);
 
         // trackSelector.setSelectionOverride(C.TRACK_TYPE_VIDEO);
@@ -107,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
         //DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory();
         //MediaSource mediaSource = new HlsMediaSource(Uri.parse(url),mediaDataSourceFactory,null,null);
     }
-
+    //스트리밍 셋팅
     private void playExoStream(String url, VideoFile.VideoQuality type) {
         initExoPlayer();
 
@@ -139,75 +150,102 @@ public class MainActivity extends AppCompatActivity {
         mappedTrackinfo = trackSelector.getCurrentMappedTrackInfo();
         if (mappedTrackinfo != null) {
 
-            for(int i=0;i<mappedTrackinfo.length;i++){
+            for (int i = 0; i < mappedTrackinfo.length; i++) {
                 trackGroups = mappedTrackinfo.getTrackGroups(i);
-
+                Log.e("trackGroups",mappedTrackinfo.getTrackGroups(i).toString());
                 int rendererType = player.getRendererType(i);
-
-                if(trackGroups.length != 0 && rendererType ==C.TRACK_TYPE_VIDEO){
-
-                    for(int j=0;j<trackGroups.length;j++){
-                        TrackGroup trackGroup = trackGroups.get(i);
-                        trackGroupList.add(trackGroup);
+                if (trackGroups.length != 0 && rendererType == C.TRACK_TYPE_VIDEO) {
+                    rendererIndex = i;
+                    Log.e("rendererIndex",rendererIndex+"");
+                    for (int j = 0; j < trackGroups.length; j++) {//보통 0이다
+                        TrackGroup trackGroup = trackGroups.get(j);
+                        Log.e("trackGroup",trackGroups.get(j).toString());
                         qualityList.clear();
-                        for(int k=0;k<trackGroup.length;k++){
+                        for (int k = 0; k < trackGroup.length; k++) {
                             Format format = trackGroup.getFormat(k);
-                            qualityList.add(videoFormatToString(format));
+                            Log.e("format",format.toString());
+                            qualityList.add(trackGroup.getFormat(k).height+"p");
+                            formatList.add(format);
                         }
                     }
-
-
-
                 }
             }
+
+
         } else {
             Log.e("trackSelecotor", "null........");
         }
+
+        DebugTextViewHelper debugTextViewHelper = new DebugTextViewHelper(player,mainNum);
+        debugTextViewHelper.start();
         initListDialog();
     }
 
-    private void initListDialog(){
+    private void initListDialog() {
         builder = new AlertDialog.Builder(this);
         builder.setTitle("Quality");
-        builder.setItems(qualityList.toArray(new String[qualityList.size()]), new DialogInterface.OnClickListener() {
+        builder.setSingleChoiceItems(qualityList.toArray(new String[qualityList.size()]), 0, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                Toast.makeText(MainActivity.this, "count="+which, Toast.LENGTH_SHORT).show();
-                //MappingTrackSelector.SelectionOverride override = new MappingTrackSelector.SelectionOverride(videoSelectionFactory,mappedTrackinfo.getTrackGroups(which).get(which),null);
-                //trackSelector.setSelectionOverride(which,trackGroupList.get(which),);
+                Log.e("DialogCount",""+which);
+                    switch (which){
+                        case 0:
+                            trackSelect(0);
+                            break;
+                        case 1:
+                            trackSelect(1);
+                            break;
+                        case 2:
+                            trackSelect(2);
+                            break;
+                        case 3:
+                            trackSelect(3);
+                            break;
+                    }
 
-
+/*                int[] tracks = new int[trackGroups.length];
+                for(int i=0;i<trackGroups.length;i++){
+                    tracks[i]=i;
+                }*/
+                //Log.e("override-tracks",tracks.toString());
+                //trackSelector.setSelectionOverride(0,trackGroups,new MappingTrackSelector.SelectionOverride(new FixedTrackSelection.Factory(),0,3));
                 //TODO :: 화질변경을 마저 하자 selectionOverrides 고고
-                Boolean isDisabled =trackSelector.getRendererDisabled(which);
-                MappingTrackSelector.SelectionOverride override =trackSelector.getSelectionOverride(which,trackGroups);//TODO::여긴 왜 null이 뜰까 ...
-
+                /*Boolean isDisabled =trackSelector.getRendererDisabled(which);
+                MappingTrackSelector.SelectionOverride override =trackSelector.getSelectionOverride(which,trackGroups);
 
                 trackSelector.setRendererDisabled(which,isDisabled);
                 if(override != null){
                     trackSelector.setSelectionOverride(which,trackGroups,override);
                 }else{
                     trackSelector.clearSelectionOverrides(which);
-                }
+                }*/
 
             }
         });
+        builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                overrideTrackSelection();
+            }
+        });
+        builder.setCancelable(false);
         builder.create().show();
     }
 
-
-    private String videoFormatToString(Format format){
-        String result;
-        if (format.height < 0) {
-            result = buildBitrateString(format);
-        } else {
-            result = format.height + "p";
+    private void trackSelect(int num){
+        //isDisabled =trackSelector.getRendererDisabled(rendererIndex);
+        override = new SelectionOverride(videoSelectionFactory, 0, num);
+    }
+    private void overrideTrackSelection(){
+        //trackSelector.setRendererDisabled(rendererIndex,isDisabled);
+        if (override != null) {
+            //trackSelector.clearSelectionOverrides(rendererIndex);
+            trackSelector.setSelectionOverride(rendererIndex, mappedTrackinfo.getTrackGroups(0), override);
+            Log.e("override","살아있다");
+        }else{
+            trackSelector.clearSelectionOverrides(rendererIndex);
+            Log.e("override","null 이다");
         }
-        return result;
     }
-
-    private String buildBitrateString(Format format){
-        return format.bitrate == Format.NO_VALUE ? "" : String.format(Locale.US, "%.2fMbit", format.bitrate / 1000000f);
-    }
-
 
 }

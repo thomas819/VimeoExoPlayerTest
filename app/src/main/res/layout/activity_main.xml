@@ -15,6 +15,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
     <LinearLayout
+        android:orientation="vertical"
         android:gravity="bottom"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -22,7 +23,15 @@
             android:id="@+id/mainQualityBtn"
             android:text="화질보기"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"/>
+        <TextView
+            android:id="@+id/mainNum"
+            android:text="23"
+            android:textSize="18sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"/>
     </LinearLayout>
 
 </android.support.constraint.ConstraintLayout>
