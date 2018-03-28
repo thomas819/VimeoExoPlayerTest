@@ -53,7 +53,7 @@ import static com.google.android.exoplayer2.trackselection.MappingTrackSelector.
 import static com.google.android.exoplayer2.trackselection.MappingTrackSelector.SelectionOverride;
 
 public class MainActivity extends AppCompatActivity {
-    String ACCESS_TOKEN = "cffbb78296f2476a83a410475a8673c7";
+    String ACCESS_TOKEN = "yourvimeoToken";
     String url = "https://api.vimeo.com/videos/226994817";
     @BindView(R.id.mainVideo) PlayerView mainVideo;
     @BindView(R.id.mainNum) TextView mainNum;
@@ -73,6 +73,8 @@ public class MainActivity extends AppCompatActivity {
     List<String> qualityList = new ArrayList<>(); //360p,720p,...등
 
     List<Format> formatList = new ArrayList<>();
+
+    int dialogNum=0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -106,6 +108,8 @@ public class MainActivity extends AppCompatActivity {
     }
     //플레이어 셋팅
     private void initExoPlayer() {
+        //link : https://github.com/google/ExoPlayer
+
         DefaultBandwidthMeter bandwidthMeter2 = new DefaultBandwidthMeter();
         videoSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter2);
 
@@ -136,6 +140,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initVimeo() {
+        //vimeo 초기셋팅
+        //link : https://github.com/vimeo/vimeo-networking-java
         Configuration.Builder configBuilder = new Configuration.Builder(ACCESS_TOKEN);
         configBuilder.setCacheDirectory(this.getCacheDir());
 
@@ -149,7 +155,6 @@ public class MainActivity extends AppCompatActivity {
     public void onViewClicked(View view) {
         mappedTrackinfo = trackSelector.getCurrentMappedTrackInfo();
         if (mappedTrackinfo != null) {
-
             for (int i = 0; i < mappedTrackinfo.length; i++) {
                 trackGroups = mappedTrackinfo.getTrackGroups(i);
                 Log.e("trackGroups",mappedTrackinfo.getTrackGroups(i).toString());
@@ -182,11 +187,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initListDialog() {
+
+
         builder = new AlertDialog.Builder(this);
         builder.setTitle("Quality");
-        builder.setSingleChoiceItems(qualityList.toArray(new String[qualityList.size()]), 0, new DialogInterface.OnClickListener() {
+        builder.setSingleChoiceItems(qualityList.toArray(new String[qualityList.size()]), dialogNum, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
+                dialogNum=which;
                 Log.e("DialogCount",""+which);
                     switch (which){
                         case 0:
@@ -202,23 +210,6 @@ public class MainActivity extends AppCompatActivity {
                             trackSelect(3);
                             break;
                     }
-
-/*                int[] tracks = new int[trackGroups.length];
-                for(int i=0;i<trackGroups.length;i++){
-                    tracks[i]=i;
-                }*/
-                //Log.e("override-tracks",tracks.toString());
-                //trackSelector.setSelectionOverride(0,trackGroups,new MappingTrackSelector.SelectionOverride(new FixedTrackSelection.Factory(),0,3));
-                //TODO :: 화질변경을 마저 하자 selectionOverrides 고고
-                /*Boolean isDisabled =trackSelector.getRendererDisabled(which);
-                MappingTrackSelector.SelectionOverride override =trackSelector.getSelectionOverride(which,trackGroups);
-
-                trackSelector.setRendererDisabled(which,isDisabled);
-                if(override != null){
-                    trackSelector.setSelectionOverride(which,trackGroups,override);
-                }else{
-                    trackSelector.clearSelectionOverrides(which);
-                }*/
 
             }
         });
@@ -239,7 +230,6 @@ public class MainActivity extends AppCompatActivity {
     private void overrideTrackSelection(){
         //trackSelector.setRendererDisabled(rendererIndex,isDisabled);
         if (override != null) {
-            //trackSelector.clearSelectionOverrides(rendererIndex);
             trackSelector.setSelectionOverride(rendererIndex, mappedTrackinfo.getTrackGroups(0), override);
             Log.e("override","살아있다");
         }else{
