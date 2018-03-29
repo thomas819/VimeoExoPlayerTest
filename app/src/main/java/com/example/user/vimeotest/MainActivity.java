@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.text.Selection;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -22,17 +21,12 @@ import com.google.android.exoplayer2.source.TrackGroupArray;
 import com.google.android.exoplayer2.source.dash.DashMediaSource;
 import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource;
 import com.google.android.exoplayer2.source.hls.HlsMediaSource;
-import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
-import com.google.android.exoplayer2.trackselection.FixedTrackSelection;
-import com.google.android.exoplayer2.trackselection.MappingTrackSelector;
-import com.google.android.exoplayer2.trackselection.TrackSelection;
 import com.google.android.exoplayer2.ui.DebugTextViewHelper;
 import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
 import com.vimeo.networking.Configuration;
 import com.vimeo.networking.Vimeo;
@@ -43,11 +37,8 @@ import com.vimeo.networking.model.VideoFile;
 import com.vimeo.networking.model.error.VimeoError;
 import com.vimeo.networking.model.playback.Play;
 
-import java.security.AlgorithmConstraints;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.function.ToDoubleBiFunction;
 
 import butterknife.BindString;
 import butterknife.BindView;
@@ -67,10 +58,13 @@ public class MainActivity extends AppCompatActivity {
     SimpleExoPlayer player;
     DefaultTrackSelector trackSelector;
     MappedTrackInfo mappedTrackinfo;
-    AdaptiveTrackSelection.Factory videoSelectionFactory;
+    //AdaptiveTrackSelection.Factory videoSelectionFactory;
+    com.example.user.vimeotest.AdaptiveTrackSelection.Factory videoSelectionFactory;
     AlertDialog.Builder builder;
     TrackGroupArray trackGroups;
     SelectionOverride override;
+
+    DefaultBandwidthMeter bandwidthMeter;
 
     Boolean isDisabled;
 
@@ -101,8 +95,6 @@ public class MainActivity extends AppCompatActivity {
                             playExoStream(file.getLink(),type);
                             break;
                     }
-
-
                 }
             }
 
@@ -113,30 +105,30 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
-        //vimeo();
+
     }
 
     //플레이어 셋팅
     private void initExoPlayer() {
         //link : https://github.com/google/ExoPlayer
-        DefaultBandwidthMeter bandwidthMeter2 = new DefaultBandwidthMeter();
-        videoSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter2);
-
+        bandwidthMeter = new DefaultBandwidthMeter();//네트워크 용량 측정을 위한 것
+        //videoSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter);
+        videoSelectionFactory = new com.example.user.vimeotest.AdaptiveTrackSelection.Factory(bandwidthMeter);
         trackSelector = new DefaultTrackSelector(videoSelectionFactory);
 
         // trackSelector.setSelectionOverride(C.TRACK_TYPE_VIDEO);
         player = ExoPlayerFactory.newSimpleInstance(this, trackSelector);
         mainVideo.setPlayer(player);
-
-        //DefaultExtractorsFactory extractorsFactory = new DefaultExtractorsFactory();
-        //MediaSource mediaSource = new HlsMediaSource(Uri.parse(url),mediaDataSourceFactory,null,null);
+        //exoplayer debug
+        DebugTextViewHelper debugTextViewHelper = new DebugTextViewHelper(player, mainNum);
+        debugTextViewHelper.start();
     }
 
     //스트리밍 셋팅
     private void playExoStream(@NonNull String url,int type) {
             initExoPlayer();
-            DataSource.Factory DataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "test"), new DefaultBandwidthMeter());
-            DataSource.Factory mediaDataSourceFactory = new DefaultDataSourceFactory(this,Util.getUserAgent(this,"test"),new DefaultBandwidthMeter());
+            DataSource.Factory DataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "test"), bandwidthMeter);
+            DataSource.Factory mediaDataSourceFactory = new DefaultDataSourceFactory(this,Util.getUserAgent(this,"test"),bandwidthMeter);
             MediaSource mediaSource = null;
             switch (type){
                 case C.TYPE_HLS:
@@ -150,6 +142,7 @@ public class MainActivity extends AppCompatActivity {
         if (mediaSource != null) {
             player.prepare(mediaSource);
             //player.setPlayWhenReady(true);//시작시 자동재생
+
         }
     }
 
@@ -185,7 +178,12 @@ public class MainActivity extends AppCompatActivity {
                         for (int k = 0; k < trackGroup.length; k++) {
                             Format format = trackGroup.getFormat(k);
                             Log.e("format", format.toString());
-                            qualityList.add(trackGroup.getFormat(k).height + "p");
+                            if(trackGroup.getFormat(k).height == 360){
+                                qualityList.add(trackGroup.getFormat(k).height + "p(auto)");
+                            }else{
+                                qualityList.add(trackGroup.getFormat(k).height + "p");
+                            }
+
                         }
                     }
                 }
@@ -196,8 +194,6 @@ public class MainActivity extends AppCompatActivity {
             Log.e("trackSelecotor", "null........");
         }
 
-        DebugTextViewHelper debugTextViewHelper = new DebugTextViewHelper(player, mainNum);
-        debugTextViewHelper.start();
         initListDialog();
     }
 
@@ -210,7 +206,6 @@ public class MainActivity extends AppCompatActivity {
                 dialogNum = which;
                 Log.e("DialogCount", "" + which);
                 trackSelect(which);
-
             }
         });
         builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
