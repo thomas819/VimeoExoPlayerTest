@@ -157,6 +157,7 @@ public class MainActivity extends AppCompatActivity {
     private void initVimeo() {
         //vimeo 초기셋팅
         //link : https://github.com/vimeo/vimeo-networking-java
+        //link : https://developer.vimeo.com/apps
         Configuration.Builder configBuilder = new Configuration.Builder(ACCESS_TOKEN);
         configBuilder.setCacheDirectory(this.getCacheDir());
 
