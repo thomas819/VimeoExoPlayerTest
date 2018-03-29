@@ -3,6 +3,7 @@ package com.example.user.vimeotest;
 import android.content.DialogInterface;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.text.Selection;
@@ -18,6 +19,8 @@ import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.TrackGroup;
 import com.google.android.exoplayer2.source.TrackGroupArray;
+import com.google.android.exoplayer2.source.dash.DashMediaSource;
+import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource;
 import com.google.android.exoplayer2.source.hls.HlsMediaSource;
 import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
@@ -44,7 +47,9 @@ import java.security.AlgorithmConstraints;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.ToDoubleBiFunction;
 
+import butterknife.BindString;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
@@ -53,10 +58,10 @@ import static com.google.android.exoplayer2.trackselection.MappingTrackSelector.
 import static com.google.android.exoplayer2.trackselection.MappingTrackSelector.SelectionOverride;
 
 public class MainActivity extends AppCompatActivity {
-    String ACCESS_TOKEN = "token";
     String url = "https://api.vimeo.com/videos/226994817";
     @BindView(R.id.mainVideo) PlayerView mainVideo;
     @BindView(R.id.mainNum) TextView mainNum;
+    @BindString(R.string.token) String ACCESS_TOKEN;
 
     //exoPlayer
     SimpleExoPlayer player;
@@ -87,11 +92,17 @@ public class MainActivity extends AppCompatActivity {
                 Play play = video.getPlay();
                 //video.
                 for (VideoFile file : video.files) {
-                    if (file.getQuality() == VideoFile.VideoQuality.HLS) {
-                        // HLS 이면
-                        //file.getLink() 링크를 가져오쟈
-                        playExoStream(file.getLink(), VideoFile.VideoQuality.HLS);
+                    int type =Util.inferContentType(Uri.parse(file.getLink()));
+                    switch (type){
+                        case C.TYPE_HLS:
+                            playExoStream(file.getLink(),type);
+                            break;
+                        case C.TYPE_DASH:
+                            playExoStream(file.getLink(),type);
+                            break;
                     }
+
+
                 }
             }
 
@@ -122,21 +133,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //스트리밍 셋팅
-    private void playExoStream(String url, VideoFile.VideoQuality type) {
-        initExoPlayer();
-
-        MediaSource mediaSource = null;
-        DataSource.Factory DataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "test"), new DefaultBandwidthMeter());
-
-        if (type == VideoFile.VideoQuality.HLS) {
-            mediaSource = new HlsMediaSource.Factory(DataSourceFactory).createMediaSource(Uri.parse(url), null, null);
-        }
+    private void playExoStream(@NonNull String url,int type) {
+            initExoPlayer();
+            DataSource.Factory DataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "test"), new DefaultBandwidthMeter());
+            DataSource.Factory mediaDataSourceFactory = new DefaultDataSourceFactory(this,Util.getUserAgent(this,"test"),new DefaultBandwidthMeter());
+            MediaSource mediaSource = null;
+            switch (type){
+                case C.TYPE_HLS:
+                    mediaSource = new HlsMediaSource.Factory(DataSourceFactory).createMediaSource(Uri.parse(url), null, null);
+                    break;
+                case C.TYPE_DASH:
+                    mediaSource = new DashMediaSource.Factory(new DefaultDashChunkSource.Factory(DataSourceFactory),mediaDataSourceFactory).createMediaSource(Uri.parse(url), null, null);
+                    break;
+            }
 
         if (mediaSource != null) {
             player.prepare(mediaSource);
             //player.setPlayWhenReady(true);//시작시 자동재생
         }
     }
+
 
     private void initVimeo() {
         //vimeo 초기셋팅
