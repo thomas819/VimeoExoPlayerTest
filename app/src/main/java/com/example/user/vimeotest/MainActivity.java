@@ -1,6 +1,8 @@
 package com.example.user.vimeotest;
 
 import android.content.DialogInterface;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -45,6 +47,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
+import static com.example.user.vimeotest.AdaptiveTrackSelection.DEFAULT_MAX_INITIAL_BITRATE;
 import static com.google.android.exoplayer2.trackselection.MappingTrackSelector.MappedTrackInfo;
 import static com.google.android.exoplayer2.trackselection.MappingTrackSelector.SelectionOverride;
 
@@ -78,8 +81,63 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
-        initVimeo();
+        initVimeoToken();
+        vimeoGetVideo();
+        checkWifiChangeQuality();
+    }
 
+    //플레이어 셋팅
+    private void initExoPlayer() {
+        //link : https://github.com/google/ExoPlayer
+        bandwidthMeter = new DefaultBandwidthMeter();//네트워크 용량 측정을 위한 것
+        //videoSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter);
+        videoSelectionFactory = new com.example.user.vimeotest.AdaptiveTrackSelection.Factory(bandwidthMeter);
+
+        trackSelector = new DefaultTrackSelector(videoSelectionFactory);
+
+        // trackSelector.setSelectionOverride(C.TRACK_TYPE_VIDEO);
+        player = ExoPlayerFactory.newSimpleInstance(this, trackSelector);
+        mainVideo.setPlayer(player);
+        //exoplayer debug
+        DebugTextViewHelper debugTextViewHelper = new DebugTextViewHelper(player, mainNum);
+        debugTextViewHelper.start();
+    }
+
+    //스트리밍 셋팅
+    private void playExoStream(@NonNull String url,int type) {
+            initExoPlayer();
+            DataSource.Factory DataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "test"), bandwidthMeter);
+            DataSource.Factory mediaDataSourceFactory = new DefaultDataSourceFactory(this,Util.getUserAgent(this,"test"),bandwidthMeter);
+            MediaSource mediaSource = null;
+            switch (type){
+                case C.TYPE_HLS:
+                    mediaSource = new HlsMediaSource.Factory(DataSourceFactory).createMediaSource(Uri.parse(url), null, null);
+                    break;
+                case C.TYPE_DASH:
+                    mediaSource = new DashMediaSource.Factory(new DefaultDashChunkSource.Factory(DataSourceFactory),mediaDataSourceFactory).createMediaSource(Uri.parse(url), null, null);
+                    break;
+            }
+        if (mediaSource != null) {
+            player.prepare(mediaSource);
+            //player.setPlayWhenReady(true);//시작시 자동재생
+
+        }
+    }
+
+
+    private void initVimeoToken() {
+        //vimeo 초기셋팅
+        //link : https://github.com/vimeo/vimeo-networking-java
+        //link : https://developer.vimeo.com/apps
+        Configuration.Builder configBuilder = new Configuration.Builder(ACCESS_TOKEN);
+        configBuilder.setCacheDirectory(this.getCacheDir());
+
+        configBuilder.enableCertPinning(false);
+        configBuilder.setLogLevel(Vimeo.LogLevel.VERBOSE);
+        VimeoClient.initialize(configBuilder.build());
+    }
+
+    private void vimeoGetVideo(){
         VimeoClient.getInstance().fetchNetworkContent(url, new ModelCallback<Video>(Video.class) {
             @Override
             public void success(Video video) {
@@ -105,60 +163,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
         });
-
     }
-
-    //플레이어 셋팅
-    private void initExoPlayer() {
-        //link : https://github.com/google/ExoPlayer
-        bandwidthMeter = new DefaultBandwidthMeter();//네트워크 용량 측정을 위한 것
-        //videoSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter);
-        videoSelectionFactory = new com.example.user.vimeotest.AdaptiveTrackSelection.Factory(bandwidthMeter);
-        trackSelector = new DefaultTrackSelector(videoSelectionFactory);
-
-        // trackSelector.setSelectionOverride(C.TRACK_TYPE_VIDEO);
-        player = ExoPlayerFactory.newSimpleInstance(this, trackSelector);
-        mainVideo.setPlayer(player);
-        //exoplayer debug
-        DebugTextViewHelper debugTextViewHelper = new DebugTextViewHelper(player, mainNum);
-        debugTextViewHelper.start();
-    }
-
-    //스트리밍 셋팅
-    private void playExoStream(@NonNull String url,int type) {
-            initExoPlayer();
-            DataSource.Factory DataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "test"), bandwidthMeter);
-            DataSource.Factory mediaDataSourceFactory = new DefaultDataSourceFactory(this,Util.getUserAgent(this,"test"),bandwidthMeter);
-            MediaSource mediaSource = null;
-            switch (type){
-                case C.TYPE_HLS:
-                    mediaSource = new HlsMediaSource.Factory(DataSourceFactory).createMediaSource(Uri.parse(url), null, null);
-                    break;
-                case C.TYPE_DASH:
-                    mediaSource = new DashMediaSource.Factory(new DefaultDashChunkSource.Factory(DataSourceFactory),mediaDataSourceFactory).createMediaSource(Uri.parse(url), null, null);
-                    break;
-            }
-
-        if (mediaSource != null) {
-            player.prepare(mediaSource);
-            //player.setPlayWhenReady(true);//시작시 자동재생
-
-        }
-    }
-
-
-    private void initVimeo() {
-        //vimeo 초기셋팅
-        //link : https://github.com/vimeo/vimeo-networking-java
-        //link : https://developer.vimeo.com/apps
-        Configuration.Builder configBuilder = new Configuration.Builder(ACCESS_TOKEN);
-        configBuilder.setCacheDirectory(this.getCacheDir());
-
-        configBuilder.enableCertPinning(false);
-        configBuilder.setLogLevel(Vimeo.LogLevel.VERBOSE);
-        VimeoClient.initialize(configBuilder.build());
-    }
-
 
     @OnClick(R.id.mainQualityBtn)
     public void onViewClicked(View view) {
@@ -227,10 +232,31 @@ public class MainActivity extends AppCompatActivity {
         //trackSelector.setRendererDisabled(rendererIndex,isDisabled);
         if (override != null) {
             trackSelector.setSelectionOverride(rendererIndex, mappedTrackinfo.getTrackGroups(0), override);
-            Log.e("override", "살아있다");
         } else {
             trackSelector.clearSelectionOverrides(rendererIndex);
-            Log.e("override", "null 이다");
+        }
+    }
+
+    private void checkWifiChangeQuality(){
+        Boolean check = null;
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+        if( networkInfo != null && networkInfo.isConnected()){
+            switch (networkInfo.getType()){
+                case ConnectivityManager.TYPE_WIFI:
+                    Toast.makeText(this, "wifi다", Toast.LENGTH_SHORT).show();
+                    check= true;
+                    break;
+                case ConnectivityManager.TYPE_MOBILE:
+                    Toast.makeText(this, "모바일이다", Toast.LENGTH_SHORT).show();
+                    check= false;
+                    break;
+            }
+        }
+        if(check){
+            DEFAULT_MAX_INITIAL_BITRATE = Integer.MAX_VALUE;
+        }else{
+            DEFAULT_MAX_INITIAL_BITRATE = 800000;
         }
     }
 

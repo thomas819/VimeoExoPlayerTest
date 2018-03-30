@@ -147,7 +147,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection{
 
     }
 
-    public static final int DEFAULT_MAX_INITIAL_BITRATE = 800000;
+    public static int DEFAULT_MAX_INITIAL_BITRATE = 800000;
     //public static final int DEFAULT_MAX_INITIAL_BITRATE = Integer.MAX_VALUE;//시작값을 최대화질로
     public static final int DEFAULT_MIN_DURATION_FOR_QUALITY_INCREASE_MS = 10000;
     public static final int DEFAULT_MAX_DURATION_FOR_QUALITY_DECREASE_MS = 25000;
@@ -177,8 +177,7 @@ public class AdaptiveTrackSelection extends BaseTrackSelection{
      *     empty. May be in any order.
      * @param bandwidthMeter Provides an estimate of the currently available bandwidth.
      */
-    public AdaptiveTrackSelection(TrackGroup group, int[] tracks,
-                                  BandwidthMeter bandwidthMeter) {
+    public AdaptiveTrackSelection(TrackGroup group, int[] tracks, BandwidthMeter bandwidthMeter) {
         this(
                 group,
                 tracks,
@@ -382,4 +381,5 @@ public class AdaptiveTrackSelection extends BaseTrackSelection{
                 ? (long) (availableDurationUs * bufferedFractionToLiveEdgeForQualityIncrease)
                 : minDurationForQualityIncreaseUs;
     }
+
 }
