@@ -1,29 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     tools:context="com.example.user.vimeotest.MainActivity">
 
-<!--    <cn.jzvd.JZVideoPlayerStandard
-        android:id="@+id/mainVideo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>-->
-    <com.google.android.exoplayer2.ui.PlayerView
-        android:id="@+id/mainVideo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
-    <LinearLayout
-        android:orientation="vertical"
-        android:gravity="bottom"
+    <!--참고 : https://codelabs.developers.google.com/codelabs/exoplayer-intro/#6
+    layout_exoplay_control.xml 이 제목으로 layout만들면 기존 샘플 layout을 override한다
+    -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-        <Button
-            android:id="@+id/mainQualityBtn"
-            android:text="화질보기"
-            android:layout_width="wrap_content"
+        <com.google.android.exoplayer2.ui.SimpleExoPlayerView
+            android:id="@+id/mainVideo"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            app:show_timeout="2000"
             android:layout_gravity="center"/>
         <TextView
             android:id="@+id/mainNum"
@@ -31,7 +25,12 @@
             android:textSize="18sp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"/>
-    </LinearLayout>
-
-</android.support.constraint.ConstraintLayout>
+            android:layout_gravity="bottom"/>
+    </FrameLayout>
+    <!--
+        app:use_controller="false" //컨트롤러 사용여부
+        app:show_timeout="10000" //컨트롤러 자동 사라짐 시간
+        app:fastforward_increment="30000"//앞으로 빠르게 간격
+        app:rewind_increment="30000"/뒤로 빠르게 간격/>
+    -->
+</LinearLayout>

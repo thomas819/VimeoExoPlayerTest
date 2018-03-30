@@ -1,6 +1,6 @@
 package com.example.user.vimeotest;
 
-import android.content.DialogInterface;
+import android.content.pm.ActivityInfo;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -52,29 +52,27 @@ import static com.google.android.exoplayer2.trackselection.MappingTrackSelector.
 import static com.google.android.exoplayer2.trackselection.MappingTrackSelector.SelectionOverride;
 
 public class MainActivity extends AppCompatActivity {
-    String url = "https://api.vimeo.com/videos/226994817";
+    String url = "https://api.vimeo.com/videos/226994765";
+    @BindString(R.string.token) String ACCESS_TOKEN;
     @BindView(R.id.mainVideo) PlayerView mainVideo;
     @BindView(R.id.mainNum) TextView mainNum;
-    @BindString(R.string.token) String ACCESS_TOKEN;
 
     //exoPlayer
     SimpleExoPlayer player;
     DefaultTrackSelector trackSelector;
     MappedTrackInfo mappedTrackinfo;
     //AdaptiveTrackSelection.Factory videoSelectionFactory;
-    com.example.user.vimeotest.AdaptiveTrackSelection.Factory videoSelectionFactory;
+    AdaptiveTrackSelection.Factory videoSelectionFactory;
     AlertDialog.Builder builder;
     TrackGroupArray trackGroups;
     SelectionOverride override;
 
     DefaultBandwidthMeter bandwidthMeter;
-
-    Boolean isDisabled;
-
     int rendererIndex = 0;
-    List<String> qualityList = new ArrayList<>(); //360p,720p,...등
 
+    List<String> qualityList = new ArrayList<>(); //360p,720p,...등
     int dialogNum = 0;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,18 +82,38 @@ public class MainActivity extends AppCompatActivity {
         initVimeoToken();
         vimeoGetVideo();
         checkWifiChangeQuality();
+        Toast.makeText(this, "onCreate", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Toast.makeText(this, "onResume", Toast.LENGTH_SHORT).show();
+        if(player != null){
+            player.setPlayWhenReady(true);//동영상 시작
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if(player != null){
+            player.setPlayWhenReady(false);//동영상 정지
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        player.release();
     }
 
     //플레이어 셋팅
     private void initExoPlayer() {
         //link : https://github.com/google/ExoPlayer
         bandwidthMeter = new DefaultBandwidthMeter();//네트워크 용량 측정을 위한 것
-        //videoSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter);
-        videoSelectionFactory = new com.example.user.vimeotest.AdaptiveTrackSelection.Factory(bandwidthMeter);
-
+        videoSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter);
         trackSelector = new DefaultTrackSelector(videoSelectionFactory);
-
-        // trackSelector.setSelectionOverride(C.TRACK_TYPE_VIDEO);
         player = ExoPlayerFactory.newSimpleInstance(this, trackSelector);
         mainVideo.setPlayer(player);
         //exoplayer debug
@@ -104,23 +122,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //스트리밍 셋팅
-    private void playExoStream(@NonNull String url,int type) {
-            initExoPlayer();
-            DataSource.Factory DataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "test"), bandwidthMeter);
-            DataSource.Factory mediaDataSourceFactory = new DefaultDataSourceFactory(this,Util.getUserAgent(this,"test"),bandwidthMeter);
-            MediaSource mediaSource = null;
-            switch (type){
-                case C.TYPE_HLS:
-                    mediaSource = new HlsMediaSource.Factory(DataSourceFactory).createMediaSource(Uri.parse(url), null, null);
-                    break;
-                case C.TYPE_DASH:
-                    mediaSource = new DashMediaSource.Factory(new DefaultDashChunkSource.Factory(DataSourceFactory),mediaDataSourceFactory).createMediaSource(Uri.parse(url), null, null);
-                    break;
-            }
+    private void playExoStream(@NonNull String url, int type) {
+        initExoPlayer();
+        DataSource.Factory DataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "test"), bandwidthMeter);
+        DataSource.Factory mediaDataSourceFactory = new DefaultDataSourceFactory(this, Util.getUserAgent(this, "test"), bandwidthMeter);
+        MediaSource mediaSource = null;
+        switch (type) {
+            case C.TYPE_HLS:
+                mediaSource = new HlsMediaSource.Factory(DataSourceFactory).createMediaSource(Uri.parse(url), null, null);
+                break;
+            case C.TYPE_DASH:
+                mediaSource = new DashMediaSource.Factory(new DefaultDashChunkSource.Factory(DataSourceFactory), mediaDataSourceFactory).createMediaSource(Uri.parse(url), null, null);
+                break;
+        }
         if (mediaSource != null) {
             player.prepare(mediaSource);
             //player.setPlayWhenReady(true);//시작시 자동재생
-
         }
     }
 
@@ -137,20 +154,20 @@ public class MainActivity extends AppCompatActivity {
         VimeoClient.initialize(configBuilder.build());
     }
 
-    private void vimeoGetVideo(){
+    private void vimeoGetVideo() {
         VimeoClient.getInstance().fetchNetworkContent(url, new ModelCallback<Video>(Video.class) {
             @Override
             public void success(Video video) {
                 Play play = video.getPlay();
                 //video.
                 for (VideoFile file : video.files) {
-                    int type =Util.inferContentType(Uri.parse(file.getLink()));
-                    switch (type){
+                    int type = Util.inferContentType(Uri.parse(file.getLink()));
+                    switch (type) {
                         case C.TYPE_HLS:
-                            playExoStream(file.getLink(),type);
+                            playExoStream(file.getLink(), type);
                             break;
                         case C.TYPE_DASH:
-                            playExoStream(file.getLink(),type);
+                            playExoStream(file.getLink(), type);
                             break;
                     }
                 }
@@ -165,59 +182,17 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    @OnClick(R.id.mainQualityBtn)
-    public void onViewClicked(View view) {
-        mappedTrackinfo = trackSelector.getCurrentMappedTrackInfo();
-        if (mappedTrackinfo != null) {
-            for (int i = 0; i < mappedTrackinfo.length; i++) {
-                trackGroups = mappedTrackinfo.getTrackGroups(i);
-                Log.e("trackGroups", mappedTrackinfo.getTrackGroups(i).toString());
-                int rendererType = player.getRendererType(i);
-                if (trackGroups.length != 0 && rendererType == C.TRACK_TYPE_VIDEO) {
-                    rendererIndex = i;
-                    Log.e("rendererIndex", rendererIndex + "");
-                    for (int j = 0; j < trackGroups.length; j++) {//보통 0이다
-                        TrackGroup trackGroup = trackGroups.get(j);
-                        Log.e("trackGroup", trackGroups.get(j).toString());
-                        qualityList.clear();
-                        for (int k = 0; k < trackGroup.length; k++) {
-                            Format format = trackGroup.getFormat(k);
-                            Log.e("format", format.toString());
-                            if(trackGroup.getFormat(k).height == 360){
-                                qualityList.add(trackGroup.getFormat(k).height + "p(auto)");
-                            }else{
-                                qualityList.add(trackGroup.getFormat(k).height + "p");
-                            }
-
-                        }
-                    }
-                }
-            }
-
-
-        } else {
-            Log.e("trackSelecotor", "null........");
-        }
-
-        initListDialog();
-    }
-
     private void initListDialog() {
         builder = new AlertDialog.Builder(this);
         builder.setTitle("Quality");
-        builder.setSingleChoiceItems(qualityList.toArray(new String[qualityList.size()]), dialogNum, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialogNum = which;
-                Log.e("DialogCount", "" + which);
-                trackSelect(which);
-            }
+        builder.setSingleChoiceItems(qualityList.toArray(new String[qualityList.size()]), dialogNum, (dialog, which) -> {
+            dialogNum = which;
+            Log.e("DialogCount", "" + which);
+            trackSelect(which);
         });
-        builder.setPositiveButton("확인", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                overrideTrackSelection();
-            }
+        builder.setPositiveButton("확인", (dialog, which) -> {
+            overrideTrackSelection();
+            player.setPlayWhenReady(true);
         });
         builder.setCancelable(false);
         builder.create().show();
@@ -237,27 +212,83 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void checkWifiChangeQuality(){
+    private void checkWifiChangeQuality() {
         Boolean check = null;
         ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
-        if( networkInfo != null && networkInfo.isConnected()){
-            switch (networkInfo.getType()){
+        if (networkInfo != null && networkInfo.isConnected()) {
+            switch (networkInfo.getType()) {
                 case ConnectivityManager.TYPE_WIFI:
                     Toast.makeText(this, "wifi다", Toast.LENGTH_SHORT).show();
-                    check= true;
+                    check = true;
                     break;
                 case ConnectivityManager.TYPE_MOBILE:
                     Toast.makeText(this, "모바일이다", Toast.LENGTH_SHORT).show();
-                    check= false;
+                    check = false;
                     break;
             }
         }
-        if(check){
+        if (check) {
             DEFAULT_MAX_INITIAL_BITRATE = Integer.MAX_VALUE;
-        }else{
+            dialogNum = 3;
+        } else {
             DEFAULT_MAX_INITIAL_BITRATE = 800000;
+            dialogNum = 0;
         }
     }
 
+
+    @OnClick({R.id.exo_controller_QualityBtn, R.id.exo_controller_FullScreenBtn})
+    public void onViewClicked(View v) {
+        switch (v.getId()) {
+            case R.id.exo_controller_QualityBtn:
+                mappedTrackinfo = trackSelector.getCurrentMappedTrackInfo();
+                if (mappedTrackinfo != null) {
+                    for (int i = 0; i < mappedTrackinfo.length; i++) {
+                        trackGroups = mappedTrackinfo.getTrackGroups(i);
+                        Log.e("trackGroups", mappedTrackinfo.getTrackGroups(i).toString());
+                        int rendererType = player.getRendererType(i);
+                        if (trackGroups.length != 0 && rendererType == C.TRACK_TYPE_VIDEO) {
+                            rendererIndex = i;
+                            Log.e("rendererIndex", rendererIndex + "");
+                            for (int j = 0; j < trackGroups.length; j++) {//보통 0이다
+                                TrackGroup trackGroup = trackGroups.get(j);
+                                Log.e("trackGroup", trackGroups.get(j).toString());
+                                qualityList.clear();
+                                for (int k = 0; k < trackGroup.length; k++) {
+                                    Format format = trackGroup.getFormat(k);
+                                    Log.e("format", format.toString());
+                                    qualityList.add(trackGroup.getFormat(k).height + "p");
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Log.e("trackSelecotor", "null........");
+                }
+                initListDialog();
+                player.setPlayWhenReady(false);
+                break;
+            case R.id.exo_controller_FullScreenBtn:
+                player.setPlayWhenReady(false);
+                int orientation = getResources().getConfiguration().orientation;
+                if (orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                } else if (orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT) {
+                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                }
+                break;
+        }
+
+    }
+
+    @Override
+    public void onBackPressed() {
+        int orientation = getResources().getConfiguration().orientation;
+        if (orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        } else if (orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT) {
+            super.onBackPressed();
+        }
+    }
 }
