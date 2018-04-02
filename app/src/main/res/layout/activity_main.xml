@@ -18,6 +18,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:show_timeout="2000"
+            app:resize_mode="fixed_width"
             android:layout_gravity="center"/>
         <TextView
             android:id="@+id/mainNum"

@@ -16,6 +16,7 @@ import android.widget.Toast;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.Format;
+import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.TrackGroup;
@@ -25,7 +26,9 @@ import com.google.android.exoplayer2.source.dash.DefaultDashChunkSource;
 import com.google.android.exoplayer2.source.hls.HlsMediaSource;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.ui.DebugTextViewHelper;
+import com.google.android.exoplayer2.ui.DefaultTimeBar;
 import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.ui.TimeBar;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
@@ -56,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
     @BindString(R.string.token) String ACCESS_TOKEN;
     @BindView(R.id.mainVideo) PlayerView mainVideo;
     @BindView(R.id.mainNum) TextView mainNum;
-
+    @BindView(R.id.exo_progress) DefaultTimeBar timeBar;
     //exoPlayer
     SimpleExoPlayer player;
     DefaultTrackSelector trackSelector;
@@ -73,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
     List<String> qualityList = new ArrayList<>(); //360p,720p,...등
     int dialogNum = 0;
 
+    boolean videoWatchCheck=false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,6 +87,33 @@ public class MainActivity extends AppCompatActivity {
         vimeoGetVideo();
         checkWifiChangeQuality();
         Toast.makeText(this, "onCreate", Toast.LENGTH_SHORT).show();
+        //timeBar.setEnabled(false);
+        timeBar.addListener(new TimeBar.OnScrubListener() {//timebar event
+            @Override
+            public void onScrubStart(TimeBar timeBar, long position) {
+                if(videoWatchCheck){
+                    timeBar.setEnabled(true);
+                }else{
+                    timeBar.setEnabled(false);
+                    Toast.makeText(MainActivity.this, "처음 시청시 스킵할수 없습니다", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onScrubMove(TimeBar timeBar, long position) {
+                if (videoWatchCheck){
+                    timeBar.setEnabled(true);
+                }else{
+                    timeBar.setEnabled(false);
+                    Toast.makeText(MainActivity.this, "처음 시청시 스킵할수 없습니다", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onScrubStop(TimeBar timeBar, long position, boolean canceled) {
+
+            }
+        });
     }
 
     @Override
@@ -119,6 +150,16 @@ public class MainActivity extends AppCompatActivity {
         //exoplayer debug
         DebugTextViewHelper debugTextViewHelper = new DebugTextViewHelper(player, mainNum);
         debugTextViewHelper.start();
+        //event
+        player.addListener(new Player.DefaultEventListener() {
+            @Override
+            public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
+                if(playbackState == Player.STATE_ENDED){
+                    //동영상 시청완료
+                    videoWatchCheck=true;
+                }
+            }
+        });
     }
 
     //스트리밍 셋팅
@@ -269,13 +310,19 @@ public class MainActivity extends AppCompatActivity {
                 initListDialog();
                 player.setPlayWhenReady(false);
                 break;
+
             case R.id.exo_controller_FullScreenBtn:
-                player.setPlayWhenReady(false);
+                if(player.getPlayWhenReady()){//풀레이중인지 확인
+                    player.setPlayWhenReady(true);
+                }
+
                 int orientation = getResources().getConfiguration().orientation;
                 if (orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
                     setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
                 } else if (orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT) {
                     setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                    //mainVideo.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH);
                 }
                 break;
         }
@@ -291,4 +338,5 @@ public class MainActivity extends AppCompatActivity {
             super.onBackPressed();
         }
     }
+
 }
