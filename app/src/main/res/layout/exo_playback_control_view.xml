@@ -19,11 +19,17 @@
             style="@style/ExoMediaButton.Pause"
             android:layout_gravity="center" />
 
+        <ProgressBar
+            android:id="@+id/exo_loading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="invisible"
+            android:layout_gravity="center"/>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
-            android:layout_marginTop="4dp"
             android:orientation="horizontal">
 
             <TextView

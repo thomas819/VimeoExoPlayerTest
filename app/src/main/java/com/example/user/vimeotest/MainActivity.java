@@ -6,10 +6,14 @@ import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -60,6 +64,11 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.mainVideo) PlayerView mainVideo;
     @BindView(R.id.mainNum) TextView mainNum;
     @BindView(R.id.exo_progress) DefaultTimeBar timeBar;
+    @BindView(R.id.exo_controller_FullScreenBtn) ImageView fullScreenBtn;
+    @BindView(R.id.exo_loading)ProgressBar exoLoading;
+    @BindView(R.id.exo_pause) ImageButton exoPauseBtn;
+    @BindView(R.id.exo_play) ImageButton exoPlayBtn;
+
     //exoPlayer
     SimpleExoPlayer player;
     DefaultTrackSelector trackSelector;
@@ -75,7 +84,6 @@ public class MainActivity extends AppCompatActivity {
 
     List<String> qualityList = new ArrayList<>(); //360p,720p,...등
     int dialogNum = 0;
-
     boolean videoWatchCheck=false;
 
     @Override
@@ -87,7 +95,10 @@ public class MainActivity extends AppCompatActivity {
         vimeoGetVideo();
         checkWifiChangeQuality();
         Toast.makeText(this, "onCreate", Toast.LENGTH_SHORT).show();
-        //timeBar.setEnabled(false);
+        initTimeBarEvent();
+    }
+
+    private void initTimeBarEvent(){
         timeBar.addListener(new TimeBar.OnScrubListener() {//timebar event
             @Override
             public void onScrubStart(TimeBar timeBar, long position) {
@@ -115,7 +126,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-
     @Override
     protected void onResume() {
         super.onResume();
@@ -154,12 +164,37 @@ public class MainActivity extends AppCompatActivity {
         player.addListener(new Player.DefaultEventListener() {
             @Override
             public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
+/*                switch (playbackState){
+                    case Player.STATE_BUFFERING:
+                        exoLoading.setVisibility(View.VISIBLE);
+                        exoPauseBtn.setVisibility(View.INVISIBLE);
+                        exoPlayBtn.setVisibility(View.INVISIBLE);
+                        break;
+                    case Player.STATE_READY:
+                        exoLoading.setVisibility(View.INVISIBLE);
+                        break;
+
+                    case Player.STATE_ENDED:
+                        Log.e("STATE_ENDED@@","@@");
+                        videoWatchCheck=true;
+                        break;
+                }*/
                 if(playbackState == Player.STATE_ENDED){
                     //동영상 시청완료
                     videoWatchCheck=true;
+
+                }else if(playbackState ==Player.STATE_BUFFERING){
+                    exoLoading.setVisibility(View.VISIBLE);
+                    exoPauseBtn.setVisibility(View.INVISIBLE);
+                    exoPlayBtn.setVisibility(View.INVISIBLE);
+                }else{
+                    exoLoading.setVisibility(View.INVISIBLE);
                 }
+
             }
+
         });
+
     }
 
     //스트리밍 셋팅
@@ -315,14 +350,13 @@ public class MainActivity extends AppCompatActivity {
                 if(player.getPlayWhenReady()){//풀레이중인지 확인
                     player.setPlayWhenReady(true);
                 }
-
                 int orientation = getResources().getConfiguration().orientation;
                 if (orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
                     setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-
+                    fullScreenBtn.setImageDrawable(ContextCompat.getDrawable(MainActivity.this,R.drawable.exo_controls_fullscreen_enter));
                 } else if (orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT) {
                     setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-                    //mainVideo.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH);
+                    fullScreenBtn.setImageDrawable(ContextCompat.getDrawable(MainActivity.this,R.drawable.exo_controls_fullscreen_exit));
                 }
                 break;
         }
